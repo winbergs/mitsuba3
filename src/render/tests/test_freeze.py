@@ -1166,7 +1166,7 @@ def test13_sampler(variants_vec_rgb, tmp_path, sampler, auto_opaque):
 @pytest.mark.parametrize(
     "integrator",
     [
-        # Projective integrators are not yet supported
+        # Octree guiding for indirect silhouettes is not yet supported
         "direct_projective",
         "prb_projective",
     ],
@@ -1174,7 +1174,7 @@ def test13_sampler(variants_vec_rgb, tmp_path, sampler, auto_opaque):
 @pytest.mark.parametrize("auto_opaque", [False, True])
 def test14_unsupported_integrators(variants_vec_rgb, integrator, auto_opaque):
     """
-    Tests that using projective integrators in backward mode triggers an exception.
+    Tests that using projective integrators with octree guiding in backward mode triggers an exception.
     """
 
     if mi.is_polarized:
@@ -1198,7 +1198,7 @@ def test14_unsupported_integrators(variants_vec_rgb, integrator, auto_opaque):
     })
 
     params = mi.traverse(scene)
-    dr.enable_grad(params["red.reflectance.value"])
+    dr.enable_grad(params["red-wall.to_world"])
     params.update()
 
     with pytest.raises(RuntimeError):
