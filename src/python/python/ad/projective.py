@@ -32,26 +32,25 @@ class ProjectiveDetail():
         Precompute the silhouette of the scene as seen from the sensor and store
         the result in this python class.
         """
-        if dr.flag(dr.JitFlag.FreezingScope):
-            raise RuntimeError(
-                "Initializing the primary visible silhouette inside a frozen"
-                "function is not yet supported."
-            )
         self.primary_indices = []
         self.primary_distributions = []
 
         silhouette_shapes = scene.silhouette_shapes()
-        viewpoint = mi.ScalarPoint3f(dr.slice(sensor.world_transform() @ mi.Point3f(0)))
+        viewpoint = sensor.world_transform_scalar() @ mi.ScalarPoint3f(0)
         shapes_weight = []
 
         for i in range(len(silhouette_shapes)):
             indices, weights = silhouette_shapes[i].precompute_silhouette(viewpoint)
 
             self.primary_indices.append(indices)
-            shapes_weight.append(silhouette_shapes[i].silhouette_sampling_weight())
+            shapes_weight.append(
+                mi.Float(silhouette_shapes[i].silhouette_sampling_weight())
+            )
             self.primary_distributions.append(mi.DiscreteDistribution(weights))
 
-        shapes_weight = mi.Float(shapes_weight)
+        shapes_weight = (
+            dr.concat(shapes_weight) if shapes_weight else mi.Float()
+        )
         self.primary_shape_distribution = mi.DiscreteDistribution(shapes_weight)
 
     def sample_primarily_visible_silhouette(self,
@@ -155,7 +154,7 @@ class ProjectiveDetail():
         Compute the difference in radiance between two rays that hit and miss a
         silhouette point ``ss.p`` viewed from ``viewpoint``.
         """
-        if not sensor.__repr__().startswith('PerspectiveCamera'):
+        if sensor.class_name() != 'PerspectiveCamera':
             raise Exception("Only perspective cameras are supported")
 
         with dr.suspend_grad():
@@ -396,6 +395,11 @@ class ProjectiveDetail():
         """
         Guiding structure initialization for octree-based guiding.
         """
+        if dr.flag(dr.JitFlag.FreezingScope):
+            raise RuntimeError(
+                "Octree guiding for indirect silhouettes is not supported "
+                "inside of frozen functions."
+            )
         parent = self.parent
 
         ## Octree guiding with projective or uniform initialization
